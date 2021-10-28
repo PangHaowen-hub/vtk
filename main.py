@@ -33,23 +33,32 @@ def display_mask(path):
     my_property.SetScalarOpacity(0, opacity)  # 设置透明度
 
     my_property.ShadeOn()  # 打开阴影效果
+    my_property.SetAmbient(0, 0.5)  # 环境光系数
     my_property.SetDiffuse(0, 1)  # 散射光系数
-    my_property.SetAmbient(0, 0)  # 环境光系数
     my_property.SetSpecular(0, 0)  # 反射光系数
+    # 当环境光系数占主导时，阴影效果不明显。
+    # 当散射光系数占主导时，显示效果会比较粗燥。
+    # 当反射光系数占主导时，显示效果会比较光滑。
+    my_property.SetSpecularPower(0, 0.0)  # 高光强度
 
     my_property.SetShade(0, 1)
 
-    my_property.SetSpecularPower(0, 0.5)  # 高光强度,镜面反射强度
-    my_property.SetComponentWeight(0, 1)
-    my_property.SetDisableGradientOpacity(0, 1)
-    my_property.DisableGradientOpacityOn()  # 禁用渐变不透明度
-    my_property.SetScalarOpacityUnitDistance(0, 0.5)
+    # my_property.SetComponentWeight(0, 1)
+    # my_property.SetDisableGradientOpacity(0, 1)
+    # my_property.DisableGradientOpacityOn()
+    # my_property.SetScalarOpacityUnitDistance(0, 0.5)
 
     volume.SetProperty(my_property)
 
     myCamera = vtk.vtkCamera()  # 设置相机位置及方向
     myCamera.SetViewUp(0, 0, 1)
-    myCamera.SetPosition(0, 1, 0)
+    myCamera.SetPosition(0, -1, 0)
+
+    myLight = vtk.vtkLight()  # 设置光源颜色、位置、焦点
+    myLight.SetColor(1, 1, 1)
+    myLight.SetPosition(0, 1, 1)
+    myLight.SetFocalPoint(myCamera.GetFocalPoint())
+
 
     ren = vtkRenderer()
     renWin = vtkRenderWindow()
@@ -57,7 +66,7 @@ def display_mask(path):
     iren = vtkRenderWindowInteractor()
     iren.SetRenderWindow(renWin)
     ren.SetActiveCamera(myCamera)
-
+    ren.AddLight(myLight)
     ren.AddActor(volume)
     ren.SetBackground(1.0, 1.0, 1.0)
     iren.Initialize()
