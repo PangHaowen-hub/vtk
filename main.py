@@ -4,17 +4,27 @@ import vtkmodules.vtkInteractionStyle
 import vtkmodules.vtkRenderingOpenGL2
 from vtkmodules.vtkCommonColor import vtkNamedColors
 from vtkmodules.vtkFiltersSources import vtkCylinderSource
-from vtkmodules.vtkRenderingCore import vtkActor, vtkPolyDataMapper, vtkRenderWindow, vtkRenderWindowInteractor, \
-    vtkRenderer
+from vtkmodules.vtkRenderingCore import vtkRenderWindow, vtkRenderWindowInteractor, vtkRenderer
 import vtkmodules.all as vtk
+import os
 
 
-def display_mask(path):
+def get_listdir(path):  # 获取目录下所有gz格式文件的地址，返回地址list
+    tmp_list = []
+    for file in os.listdir(path):
+        if os.path.splitext(file)[1] == '.gz':
+            file_path = os.path.join(path, file)
+            tmp_list.append(file_path)
+    return tmp_list
+
+
+def display_mask(path, save_path, Angle):
     reader = vtk.vtkNIFTIImageReader()  # 实例化Reader对象
-    reader.SetFileName(path)  # 指定所要读取的文件名
-    reader.Update()  # 调用Update()方法促使管线执行
+    reader.SetFileName(path)  # 所要读取的文件名
+    reader.Update()  # 调用Update()方法执行
 
     mapper = vtk.vtkGPUVolumeRayCastMapper()
+
     mapper.SetInputData(reader.GetOutput())
 
     volume = vtk.vtkVolume()
@@ -25,7 +35,7 @@ def display_mask(path):
     opacity.AddPoint(1, 1.0)
 
     color = vtk.vtkColorTransferFunction()  # 颜色
-    color.AddRGBPoint(1, 1, 0, 0)  # 红
+    color.AddRGBPoint(1, 0, 1, 0)  # TODO:(X,R,G,B) 颜色改RGB
 
     my_property = vtk.vtkVolumeProperty()
     my_property.SetInterpolationTypeToLinear()  # 设置插值方式
@@ -52,16 +62,16 @@ def display_mask(path):
 
     myCamera = vtk.vtkCamera()  # 设置相机位置及方向
     myCamera.SetViewUp(0, 0, 1)
-    myCamera.SetPosition(0, -1, 0)
+    myCamera.SetPosition(Angle)
 
     myLight = vtk.vtkLight()  # 设置光源颜色、位置、焦点
     myLight.SetColor(1, 1, 1)
     myLight.SetPosition(0, 1, 1)
     myLight.SetFocalPoint(myCamera.GetFocalPoint())
 
-
     ren = vtkRenderer()
     renWin = vtkRenderWindow()
+    renWin.SetSize(256, 256)  # 窗口尺寸
     renWin.AddRenderer(ren)
     iren = vtkRenderWindowInteractor()
     iren.SetRenderWindow(renWin)
@@ -71,10 +81,29 @@ def display_mask(path):
     ren.SetBackground(1.0, 1.0, 1.0)
     iren.Initialize()
     ren.ResetCamera()
-    ren.GetActiveCamera().Zoom(2)
+    ren.GetActiveCamera().Zoom(1.5)
     renWin.Render()
-    iren.Start()
+    # iren.Start()
+
+    writer = vtk.vtkBMPWriter()
+    windowto_image_filter = vtk.vtkWindowToImageFilter()
+    windowto_image_filter.SetInput(renWin)  # renWin为vtk.vtkRenderWindow()
+    windowto_image_filter.SetScale(1)
+    windowto_image_filter.SetInputBufferTypeToRGB()
+    windowto_image_filter.ReadFrontBufferOff()
+    windowto_image_filter.Update()
+    writer.SetFileName(save_path)
+    writer.SetInputConnection(windowto_image_filter.GetOutputPort())
+    writer.Write()
 
 
 if __name__ == '__main__':
-    display_mask(r'G:\segment_registration\Registration\original_image\mask_airway\lobe512_000.nii.gz')
+    img_list = get_listdir(r'C:\Users\user\Desktop\copd\0')
+    save_path = r'C:\Users\user\Desktop\copd\0_png'
+    for img_path in img_list:
+        _, fullflname = os.path.split(img_path)
+        save_dir = os.path.join(save_path, fullflname[:-7])
+        os.makedirs(save_dir, exist_ok=True)
+        display_mask(img_path, os.path.join(save_dir, '1.png'), (0, -1, 0))
+        display_mask(img_path, os.path.join(save_dir, '2.png'), (0, 1, 0))
+        display_mask(img_path, os.path.join(save_dir, '3.png'), (0, -1, 0.5))
